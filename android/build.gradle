@@ -19,3 +19,19 @@ buildscript {
 }
 
 apply plugin: "com.facebook.react.rootproject"
+
+subprojects { subproject ->
+    subproject.plugins.withId("com.android.library") {
+        def androidExt = subproject.extensions.findByName("android")
+        if (androidExt != null && (!androidExt.hasProperty("namespace") || androidExt.namespace == null)) {
+            def manifestFile = subproject.file("src/main/AndroidManifest.xml")
+            if (manifestFile.exists()) {
+                def manifestText = manifestFile.getText("UTF-8")
+                def matcher = manifestText =~ /package="([^"]+)"/
+                if (matcher.find()) {
+                    androidExt.namespace = matcher.group(1)
+                }
+            }
+        }
+    }
+}

@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-               BuildableName = "BankOfAmerica.app"
-               BlueprintName = "BankOfAmerica"
-               ReferencedContainer = "container:BankOfAmerica.xcodeproj">
+               BuildableName = "BofA.app"
+               BlueprintName = "BofA"
+               ReferencedContainer = "container:BofA.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "00E356ED1AD99517003FC87E"
-               BuildableName = "BankOfAmericaTests.xctest"
-               BlueprintName = "BankOfAmericaTests"
-               ReferencedContainer = "container:BankOfAmerica.xcodeproj">
+               BuildableName = "BofATests.xctest"
+               BlueprintName = "BofATests"
+               ReferencedContainer = "container:BofA.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "BankOfAmerica.app"
-            BlueprintName = "BankOfAmerica"
-            ReferencedContainer = "container:BankOfAmerica.xcodeproj">
+            BuildableName = "BofA.app"
+            BlueprintName = "BofA"
+            ReferencedContainer = "container:BofA.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,9 +72,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "BankOfAmerica.app"
-            BlueprintName = "BankOfAmerica"
-            ReferencedContainer = "container:BankOfAmerica.xcodeproj">
+            BuildableName = "BofA.app"
+            BlueprintName = "BofA"
+            ReferencedContainer = "container:BofA.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
