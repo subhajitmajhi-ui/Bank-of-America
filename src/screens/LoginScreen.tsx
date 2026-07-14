@@ -1,5 +1,6 @@
-import React, { ReactNode, useState } from 'react';
+import React, { useState } from 'react';
 import {
+  Alert,
   SafeAreaView,
   StyleSheet,
   View,
@@ -8,8 +9,8 @@ import {
   Text as RNText,
   TextInput,
   ScrollView,
-  TouchableOpacity,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AccordionItem from '../components/AccordionItem';
 
@@ -25,10 +26,70 @@ interface LoginScreenProps {
   onLogin: () => void;
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLogin }) => {
+const LOGIN_URL = 'https://spacexuniverse.co.in/wp-json/app/v1/user/login';
+const AUTH_TOKEN_KEY = 'authToken';
+const AUTH_USER_KEY = 'authUser';
+
+const LoginScreen: React.FC<LoginScreenProps> = ({ onBack: _onBack, onLogin }) => {
   const insets = useSafeAreaInsets();
   const [saveUserId, setSaveUserId] = useState(false);
   const [useBiometrics, setUseBiometrics] = useState(false);
+  const [userId, setUserId] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleLogin = async () => {
+    const trimmedUserId = userId.trim();
+
+    if (!trimmedUserId) {
+      Alert.alert('Validation', 'Please enter User ID.');
+      return;
+    }
+
+    if (!password) {
+      Alert.alert('Validation', 'Please enter Password.');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      const response = await fetch(LOGIN_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: trimmedUserId, password }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result?.success) {
+        const errorMessage = result?.message || 'Login failed. Please try again.';
+        Alert.alert('Login Failed', errorMessage);
+        return;
+      }
+
+      const token = result?.data?.token;
+      if (!token) {
+        Alert.alert('Login Failed', 'Token missing in login response.');
+        return;
+      }
+
+      await AsyncStorage.setItem(AUTH_TOKEN_KEY, token);
+      await AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(result?.data ?? {}));
+
+      if (saveUserId) {
+        await AsyncStorage.setItem('savedUserId', trimmedUserId);
+      } else {
+        await AsyncStorage.removeItem('savedUserId');
+      }
+
+      onLogin();
+    } catch {
+      Alert.alert('Network Error', 'Unable to connect. Please check your internet connection and try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>      
@@ -39,10 +100,25 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLogin }) => {
 
         <View style={styles.card}>
           <Text style={styles.label}>User ID</Text>
-          <TextInput style={styles.input} placeholder="" />
+          <TextInput
+            style={styles.input}
+            placeholder=""
+            value={userId}
+            onChangeText={setUserId}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
 
           <Text style={[styles.label, { marginTop: 20 }]}>Password</Text>
-          <TextInput style={styles.input} secureTextEntry placeholder="" />
+          <TextInput
+            style={styles.input}
+            secureTextEntry
+            placeholder=""
+            value={password}
+            onChangeText={setPassword}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
 
           <View style={styles.checkboxRow}>
             <Pressable
@@ -66,8 +142,12 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onBack, onLogin }) => {
             </Pressable>
           </View>
 
-          <Pressable style={styles.loginButton} onPress={onLogin}>
-            <Text style={styles.loginButtonText}>LOG IN</Text>
+          <Pressable
+            style={[styles.loginButton, isSubmitting && styles.loginButtonDisabled]}
+            onPress={handleLogin}
+            disabled={isSubmitting}
+          >
+            <Text style={styles.loginButtonText}>{isSubmitting ? 'LOGGING IN...' : 'LOG IN'}</Text>
           </Pressable>
 
           <View style={styles.linksRow}>
@@ -136,6 +216,7 @@ const styles = StyleSheet.create({
   checkmark: { color: '#fff', fontSize: 12, fontWeight: '700' },
   checkboxText: { marginLeft: 8, color: '#0c5dae', fontSize: 13, fontWeight: '700' },
   loginButton: { backgroundColor: '#0B2C6E', paddingVertical: 4, marginTop: 18, borderRadius: 0, alignItems: 'center', width: 75, alignSelf: 'center' },
+  loginButtonDisabled: { opacity: 0.7 },
   loginButtonText: { color: '#fff', fontWeight: '700', letterSpacing: 1.2, fontSize: 13 },
   linksRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 12, paddingHorizontal: 6 },
   linksRowBottom: { flexDirection: 'row', justifyContent: 'center', marginTop: 40, marginBottom: 0, paddingHorizontal: 6 },
