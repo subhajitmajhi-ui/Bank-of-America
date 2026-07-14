@@ -91,7 +91,7 @@ const DEFAULT_ACCOUNTS: Account[] = [
     },
 ];
 
-const DashboardScreen: React.FC<DashboardScreenProps> = ({ onBack: _onBack }) => {
+const DashboardScreen: React.FC<DashboardScreenProps> = ({ onBack }) => {
     const insets = useSafeAreaInsets();
     const [activeTab, setActiveTab] = useState<'accounts' | 'dashboard'>('accounts');
     const [drawerVisible, setDrawerVisible] = useState(false);
@@ -102,6 +102,38 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onBack: _onBack }) =>
         accounts: DEFAULT_ACCOUNTS,
         fullName: 'Henry Sterling',
     });
+
+    const handleLogout = async () => {
+        try {
+            const token = await AsyncStorage.getItem('authToken');
+            if (!token) {
+                await Promise.all([
+                    AsyncStorage.removeItem('authToken'),
+                    AsyncStorage.removeItem('authUser'),
+                ]);
+                onBack();
+                return;
+            }
+
+            const logoutUrl = `https://spacexuniverse.co.in/wp-json/app/v1/user/logout?token=${encodeURIComponent(token)}`;
+            const response = await fetch(logoutUrl, {
+                method: 'POST',
+            });
+
+            if (!response.ok) {
+                Alert.alert('Logout Failed', 'Unable to logout right now. Please try again.');
+                return;
+            }
+
+            await Promise.all([
+                AsyncStorage.removeItem('authToken'),
+                AsyncStorage.removeItem('authUser'),
+            ]);
+            onBack();
+        } catch {
+            Alert.alert('Network Error', 'Unable to logout right now. Please try again.');
+        }
+    };
 
     useEffect(() => {
         const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -235,7 +267,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onBack: _onBack }) =>
                     <Pressable>
                         <Ionicons name="podium-outline" size={24} color="#0B2C6E" />
                     </Pressable>
-                    <Pressable>
+                    <Pressable onPress={handleLogout}>
                         <Ionicons name="power-outline" size={24} color="#0B2C6E" />
                     </Pressable>
                 </View>

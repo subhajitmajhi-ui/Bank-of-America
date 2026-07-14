@@ -1,11 +1,13 @@
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Pressable,
   ScrollView,
+  Image,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Ionicons} from '@react-native-vector-icons/ionicons';
 
 type MenuItemProps = {
@@ -102,23 +104,74 @@ function Section({
 export default function DrawerContent({
   onClose,
 }: DrawerContentProps) {
+  const [displayName, setDisplayName] = useState('Henry Sterling');
+  const [displayUserId, setDisplayUserId] = useState('henry12');
+  const [profileImage, setProfileImage] = useState('');
+
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      try {
+        const authUserRaw = await AsyncStorage.getItem('authUser');
+        if (!authUserRaw) {
+          return;
+        }
+
+        const authUser = JSON.parse(authUserRaw);
+
+        const fullName = typeof authUser?.full_name === 'string' ? authUser.full_name.trim() : '';
+        if (fullName) {
+          setDisplayName(fullName);
+        }
+
+        const email = typeof authUser?.email === 'string' ? authUser.email.trim() : '';
+        if (email) {
+          const [emailPrefix] = email.split('@');
+          if (emailPrefix) {
+            setDisplayUserId(emailPrefix);
+          }
+        }
+
+        const profileImageUrl = typeof authUser?.profile_image === 'string' ? authUser.profile_image.trim() : '';
+        if (profileImageUrl) {
+          setProfileImage(profileImageUrl);
+        }
+      } catch {
+        // Keep default values when storage data is not available.
+      }
+    };
+
+    loadUserProfile();
+  }, []);
+
   return (
     <>
       {/* HEADER */}
       <View style={styles.header}>
-        <View style={styles.avatar}>
-          <Ionicons
-            name="person-outline"
-            size={42}
-            color="#fff"
-          />
-        </View>
+        <View style={styles.headerContent}>
+          <View style={styles.identityRow}>
+            <View style={styles.avatar}>
+              {profileImage ? (
+                <Image
+                  source={{uri: profileImage}}
+                  style={styles.avatarImage}
+                  resizeMode="cover"
+                />
+              ) : (
+                <Ionicons
+                  name="person-outline"
+                  size={42}
+                  color="#fff"
+                />
+              )}
+            </View>
 
-        <View style={{flex: 1}}>
-          <Text style={styles.name}>Henry Sterling</Text>
-          <Text style={styles.member}>
-            Online Member
-          </Text>
+            <View style={styles.identityTextWrap}>
+              <Text style={styles.name}>{displayName}</Text>
+              <Text style={styles.member}>
+                Online Member
+              </Text>
+            </View>
+          </View>
 
           <View style={styles.userCard}>
             <Text style={styles.userLabel}>
@@ -126,7 +179,7 @@ export default function DrawerContent({
             </Text>
 
             <Text style={styles.userValue}>
-              henry12
+              {displayUserId}
             </Text>
 
             <View style={{flex: 1}} />
@@ -141,7 +194,7 @@ export default function DrawerContent({
           </View>
         </View>
 
-        <Pressable onPress={onClose}>
+        <Pressable onPress={onClose} style={styles.closeButton}>
             <Ionicons
             name="close"
             size={28}
@@ -222,6 +275,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
 
+  headerContent: {
+    flex: 1,
+  },
+
+  identityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
   avatar: {
     width: 64,
     height: 64,
@@ -231,6 +293,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 15,
+    overflow: 'hidden',
+  },
+
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+
+  identityTextWrap: {
+    flex: 1,
   },
 
   name: {
@@ -252,6 +324,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
+  },
+
+  closeButton: {
+    marginLeft: 12,
+    alignSelf: 'flex-start',
   },
 
   userLabel: {
