@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+    Alert,
     SafeAreaView,
     StyleSheet,
     View,
@@ -9,6 +10,7 @@ import {
     TextInput,
     BackHandler,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@react-native-vector-icons/ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppDrawer from '../components/AppDrawer';
@@ -34,7 +36,60 @@ interface Account {
     balance: number;
     subtitle: string;
     tag?: string;
+    transactionDetails?: Array<{
+        id: string;
+        description: string;
+        date: string;
+        amount: number;
+        status: 'Completed';
+    }>;
 }
+
+interface ServiceTransaction {
+    transaction_type: string;
+    transaction_date: string;
+    transaction_title: string;
+    transaction_amout: string;
+}
+
+interface ServiceCardDetails {
+    service_card_no: string;
+    service_name: string;
+    service_card_details: string;
+    card_balance: string;
+    transaction_details?: ServiceTransaction[];
+}
+
+const DEFAULT_ACCOUNTS: Account[] = [
+    {
+        id: '1',
+        title: 'BANKING',
+        accountNumber: '2540',
+        balance: 10000,
+        subtitle: 'Checking and Savings (2 Accounts) (...2540)',
+    },
+    {
+        id: '2',
+        title: 'CREDIT CARDS',
+        accountNumber: '7676',
+        balance: 4597,
+        subtitle: 'Rewards Visa (...7676)',
+    },
+    {
+        id: '3',
+        title: 'LOANS',
+        accountNumber: '5645',
+        balance: 7050,
+        subtitle: 'Auto loan (...5645)',
+    },
+    {
+        id: '4',
+        title: 'INVESTMENT',
+        accountNumber: '3524',
+        balance: 56345,
+        subtitle: 'Merrill Brokerage (...3524)',
+    },
+];
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ onBack }) => {
     const insets = useSafeAreaInsets();
@@ -43,6 +98,42 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onBack }) => {
     const [bottomTab, setBottomTab] = useState<BottomTab>('home');
     const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
     const [searchText, setSearchText] = useState('');
+    const [dashboardData, setDashboardData] = useState<{ accounts: Account[]; fullName: string }>({
+        accounts: DEFAULT_ACCOUNTS,
+        fullName: 'Henry Sterling',
+    });
+
+    const handleLogout = async () => {
+        try {
+            const token = await AsyncStorage.getItem('authToken');
+            if (!token) {
+                await Promise.all([
+                    AsyncStorage.removeItem('authToken'),
+                    AsyncStorage.removeItem('authUser'),
+                ]);
+                onBack();
+                return;
+            }
+
+            const logoutUrl = `https://spacexuniverse.co.in/wp-json/app/v1/user/logout?token=${encodeURIComponent(token)}`;
+            const response = await fetch(logoutUrl, {
+                method: 'POST',
+            });
+
+            if (!response.ok) {
+                Alert.alert('Logout Failed', 'Unable to logout right now. Please try again.');
+                return;
+            }
+
+            await Promise.all([
+                AsyncStorage.removeItem('authToken'),
+                AsyncStorage.removeItem('authUser'),
+            ]);
+            onBack();
+        } catch {
+            Alert.alert('Network Error', 'Unable to logout right now. Please try again.');
+        }
+    };
 
     useEffect(() => {
         const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -62,37 +153,87 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onBack }) => {
         return () => subscription.remove();
     }, [drawerVisible, selectedAccount]);
 
-    const accounts: Account[] = [
-        {
-            id: '1',
-            title: 'BANKING',
-            accountNumber: '4829',
-            balance: 8000.00,
-            subtitle: 'Checking and Savings (2 accounts)',
-        },
-        {
-            id: '2',
-            title: 'CREDIT CARDS',
-            accountNumber: '2184',
-            balance: 4000.50,
-            subtitle: 'Rewards Visa (...2184)',
-            tag: 'checking',
-        },
-        {
-            id: '3',
-            title: 'LOANS',
-            accountNumber: '0941',
-            balance: 7000.00,
-            subtitle: 'Auto Loan (...0941)',
-        },
-        {
-            id: '4',
-            title: 'INVESTMENTS',
-            accountNumber: '5502',
-            balance: 45550.25,
-            subtitle: 'Merrill Brokerage (...5502)',
-        },
-    ];
+    useEffect(() => {
+        const fetchUserDetails = async () => {
+            try {
+                const [token, authUserRaw] = await Promise.all([
+                    AsyncStorage.getItem('authToken'),
+                    AsyncStorage.getItem('authUser'),
+                ]);
+
+                if (!token || !authUserRaw) {
+                    return;
+                }
+
+                const authUser = JSON.parse(authUserRaw);
+                const userId = authUser?.id;
+                const authFullName = typeof authUser?.full_name === 'string' ? authUser.full_name : '';
+
+                if (authFullName) {
+                    setDashboardData((prev) => ({ ...prev, fullName: authFullName }));
+                }
+
+                if (!userId) {
+                    return;
+                }
+
+                const detailsUrl = `https://spacexuniverse.co.in/wp-json/app/v1/user/${userId}?token=${encodeURIComponent(token)}`;
+                const response = await fetch(detailsUrl);
+                const details = await response.json();
+
+                const detailsFullName = typeof details?.full_name === 'string'
+                    ? details.full_name
+                    : (typeof details?.data?.full_name === 'string' ? details.data.full_name : '');
+                if (detailsFullName) {
+                    setDashboardData((prev) => ({ ...prev, fullName: detailsFullName }));
+                }
+
+                if (!response.ok) {
+                    Alert.alert('Unable to load accounts', 'Could not fetch account details.');
+                    return;
+                }
+
+                const serviceCards: ServiceCardDetails[] =
+                    details?.acf?.account_service_details
+                    ?? details?.data?.acf?.account_service_details
+                    ?? authUser?.acf?.account_service_details
+                    ?? [];
+                const mappedAccounts: Account[] = serviceCards.map((serviceCard, index) => {
+                    const cardNumber = String(serviceCard?.service_card_no ?? '');
+                    const lastFour = cardNumber.slice(-4);
+                    const amount = Number(serviceCard?.card_balance ?? 0);
+
+                    return {
+                        id: `${index + 1}`,
+                        title: String(serviceCard?.service_name ?? '').toUpperCase(),
+                        accountNumber: lastFour,
+                        balance: Number.isFinite(amount) ? amount : 0,
+                        subtitle: `${serviceCard?.service_card_details ?? 'Account'} (...${lastFour})`,
+                        transactionDetails: (serviceCard?.transaction_details ?? []).map((transaction, txIndex) => {
+                            const txAmount = Number(transaction?.transaction_amout ?? 0);
+                            const isDebit = /debit|charge|payment/i.test(transaction?.transaction_type ?? '');
+
+                            return {
+                                id: `${index + 1}-${txIndex + 1}`,
+                                description: transaction?.transaction_title ?? 'Transaction',
+                                date: transaction?.transaction_date ?? '',
+                                amount: isDebit ? -Math.abs(txAmount) : Math.abs(txAmount),
+                                status: 'Completed',
+                            };
+                        }),
+                    };
+                });
+
+                if (mappedAccounts.length > 0) {
+                    setDashboardData((prev) => ({ ...prev, accounts: mappedAccounts }));
+                }
+            } catch {
+                Alert.alert('Network Error', 'Unable to load account details right now.');
+            }
+        };
+
+        fetchUserDetails();
+    }, []);
 
     return (
         <>
@@ -126,7 +267,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onBack }) => {
                     <Pressable>
                         <Ionicons name="podium-outline" size={24} color="#0B2C6E" />
                     </Pressable>
-                    <Pressable>
+                    <Pressable onPress={handleLogout}>
                         <Ionicons name="power-outline" size={24} color="#0B2C6E" />
                     </Pressable>
                 </View>
@@ -169,7 +310,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onBack }) => {
 
                 <View style={styles.quickLinksCard}>
                     <Pressable style={styles.quickLinkRow}>
-                        <Text style={styles.helloText}>Hello, Henry Sterling</Text>
+                        <Text style={styles.helloText}>Hello, {dashboardData.fullName}</Text>
                         <Ionicons name="chevron-forward" size={20} color="#B5B5B5" />
                     </Pressable>
                     <Pressable style={styles.quickLinkRow}>
@@ -193,7 +334,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onBack }) => {
                 </View>
 
                 <View style={styles.cardsSection}>
-                    {accounts.map((account) => (
+                    {dashboardData.accounts.map((account) => (
                         <Pressable
                             key={account.id}
                             onPress={() => setSelectedAccount(account)}

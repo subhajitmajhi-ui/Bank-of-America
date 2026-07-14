@@ -33,6 +33,7 @@ interface AccountDetailsScreenProps {
         balance: number;
         subtitle: string;
         tag?: string;
+        transactionDetails?: Transaction[];
     };
     onBack: () => void;
 }
@@ -42,7 +43,7 @@ const AccountDetailsScreen: React.FC<AccountDetailsScreenProps> = ({ account, on
     const [activeTab, setActiveTab] = useState<'activity' | 'pay' | 'deposit'>('activity');
     const [showExplore, setShowExplore] = useState(false);
 
-    const transactions: Transaction[] = [
+    const transactions: Transaction[] = account.transactionDetails ?? [
         {
             id: '1',
             description: 'Starbucks Coffee #283',
