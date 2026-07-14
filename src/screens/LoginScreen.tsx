@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
   checkmark: { color: '#fff', fontSize: 12, fontWeight: '700' },
   checkboxText: { marginLeft: 8, color: '#0c5dae', fontSize: 13, fontWeight: '700' },
   loginButton: { backgroundColor: '#0B2C6E', paddingVertical: 4, marginTop: 18, borderRadius: 0, alignItems: 'center', width: 75, alignSelf: 'center' },
-  loginButtonDisabled: { opacity: 0.7 },
+  loginButtonDisabled: { opacity: 0.7, width: 120, alignSelf: 'center' },
   loginButtonText: { color: '#fff', fontWeight: '700', letterSpacing: 1.2, fontSize: 13 },
   linksRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 12, paddingHorizontal: 6 },
   linksRowBottom: { flexDirection: 'row', justifyContent: 'center', marginTop: 40, marginBottom: 0, paddingHorizontal: 6 },
