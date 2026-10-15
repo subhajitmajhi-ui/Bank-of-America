@@ -193,15 +193,23 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onBack }) => {
                     return;
                 }
 
-                const serviceCards: ServiceCardDetails[] =
+                const rawServiceCards =
                     details?.acf?.account_service_details
                     ?? details?.data?.acf?.account_service_details
                     ?? authUser?.acf?.account_service_details
                     ?? [];
+                const serviceCards: ServiceCardDetails[] = Array.isArray(rawServiceCards)
+                    ? rawServiceCards
+                    : rawServiceCards && typeof rawServiceCards === 'object'
+                        ? [rawServiceCards as ServiceCardDetails]
+                        : [];
                 const mappedAccounts: Account[] = serviceCards.map((serviceCard, index) => {
                     const cardNumber = String(serviceCard?.service_card_no ?? '');
                     const lastFour = cardNumber.slice(-4);
                     const amount = Number(serviceCard?.card_balance ?? 0);
+                    const transactions = Array.isArray(serviceCard?.transaction_details)
+                        ? serviceCard.transaction_details
+                        : [];
 
                     return {
                         id: `${index + 1}`,
@@ -209,7 +217,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onBack }) => {
                         accountNumber: lastFour,
                         balance: Number.isFinite(amount) ? amount : 0,
                         subtitle: `${serviceCard?.service_card_details ?? 'Account'} (...${lastFour})`,
-                        transactionDetails: (serviceCard?.transaction_details ?? []).map((transaction, txIndex) => {
+                        transactionDetails: transactions.map((transaction, txIndex) => {
                             const txAmount = Number(transaction?.transaction_amout ?? 0);
                             const isDebit = /debit|charge|payment/i.test(transaction?.transaction_type ?? '');
 
